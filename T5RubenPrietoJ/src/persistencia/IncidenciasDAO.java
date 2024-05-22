@@ -21,7 +21,7 @@ public class IncidenciasDAO {
 	private Connection conexion;
 	
     public static boolean registrarIncidencia(Estado estado, int puesto, String descripcion) {
-        String sql = "INSERT INTO incidencias (identificador, estado, puesto, descripcion, fechaIncidencia, fechaRegistro) VALUES (?, ?, ?, ?, ?, ?)";
+    	String sql = "INSERT INTO incidencias (identificador, estado, puesto, descripcion, fechaRegistro) VALUES (?, ?, ?, ?, ?)";
         Connection con = null;
         PreparedStatement sentencia = null;
         
@@ -34,8 +34,7 @@ public class IncidenciasDAO {
         	sentencia.setString(2, estado.toString());
         	sentencia.setInt(3, puesto);
         	sentencia.setString(4, descripcion);
-        	sentencia.setTimestamp(5, new Timestamp(new Date().getTime()));
-        	sentencia.setTimestamp(6, new Timestamp(new Date().getTime()));
+        	sentencia.setDate(5, new java.sql.Date(new Date().getTime()));
         	
         	int filasAfectadas = sentencia.executeUpdate();
         	return filasAfectadas > 0;
@@ -55,7 +54,7 @@ public class IncidenciasDAO {
      * @return	Devuelve incidencia en contrada o null si no encontró nada
      */
     public static Incidencias buscarIncidencia(String identificador) {
-        String sql = "SELECT * FROM incidencias_pendientes WHERE identificador = ?";
+        String sql = "SELECT * FROM incidencias WHERE identificador = ?";
         Connection con = null;
         PreparedStatement sentencia = null;
         ResultSet rs = null;
@@ -68,13 +67,16 @@ public class IncidenciasDAO {
         	
         	if (rs.next()) {
         		String iden = rs.getString("identificador");
-        		Estado estado = Estado.valueOf(rs.getString("estado"));
-        		int Puesto = rs.getInt("puesto");
-        		String desc = rs.getString("descripcion");
-        		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-        		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
-        		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
-        		return incidencia;
+                Estado estado = Estado.valueOf(rs.getString("estado"));
+                int puesto = rs.getInt("puesto");
+                String descripcion = rs.getString("descripcion");
+                Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
+                incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+                incidencia.setFechaResolucion(rs.getTimestamp("fechaResolucion"));
+                incidencia.setResolucion(rs.getString("resolucion"));
+                incidencia.setFechaEliminacion(rs.getTimestamp("fechaEliminacion"));
+                incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
+                return incidencia;
         	}
         } catch (SQLException e) {
         	e.printStackTrace();
@@ -247,7 +249,6 @@ public class IncidenciasDAO {
     		int Puesto = rs.getInt("puesto");
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
     		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
     		incidencias.add(incidencia);
         }
@@ -284,7 +285,6 @@ public class IncidenciasDAO {
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
     		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
-    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
     		incidencia.setFechaEliminacion(rs.getTimestamp("fechaEliminacion"));
             incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
     		incidencias.add(incidencia);
@@ -321,7 +321,6 @@ public class IncidenciasDAO {
     		int Puesto = rs.getInt("puesto");
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
     		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
     		incidencia.setFechaResolucion(rs.getTimestamp("fechaResolucion"));
             incidencia.setResolucion(rs.getString("resolucion"));

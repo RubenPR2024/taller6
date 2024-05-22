@@ -313,9 +313,9 @@ public class Interfaz {
                     System.out.print("Seleccione una opción: ");
                     int opcionXML = Integer.parseInt(sc.nextLine());
                     switch (opcionXML) {
-                        case 1 -> Logica.exportarPendientesXML();
-                        case 2 -> Logica.exportarResueltasXML();
-                        case 3 -> Logica.exportarEliminadasXML();
+//                        case 1 -> Logica.exportarPendientesXML();
+//                        case 2 -> Logica.exportarResueltasXML();
+//                        case 3 -> Logica.exportarEliminadasXML();
                         default -> System.out.println("Opción no válida.");
                     }
                 }
