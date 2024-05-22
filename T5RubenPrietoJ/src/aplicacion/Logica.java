@@ -45,7 +45,7 @@ public class Logica {
                 Interfaz.informaResultado(opcion, operacionCorrecta);
             }
             case 2 -> { // Buscar incidencia
-                ArrayList<Incidencias> pendientes = IncidenciasDAO.getIncidenciasPendientes();
+            	List<Incidencias> pendientes = IncidenciasDAO.getIncidenciasPendientes();
                 System.out.println("Lista de incidencias pendientes:");
                 for (Incidencias incidencia : pendientes) {
                     System.out.println("Código: " + incidencia.getIdentificador());
@@ -114,9 +114,9 @@ public class Logica {
                 System.out.print("Seleccione una opción: ");
                 int opcionXML = Integer.parseInt(sc.nextLine());
                 switch (opcionXML) {
-                    case 1 -> exportarPendientesXML();
-                    case 2 -> exportarResueltasXML();
-                    case 3 -> exportarEliminadasXML();
+//                    case 1 -> exportarPendientesXML();
+//                    case 2 -> exportarResueltasXML();
+//                    case 3 -> exportarEliminadasXML();
                     default -> System.out.println("Opción no válida.");
                 }
             }
@@ -182,22 +182,22 @@ public class Logica {
     /**
      * Exporta las incidencias pendientes a un archivo XML.
      */
-    public static void exportarPendientesXML() {
-        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasPendientes(), "pendientes.xml");
-    }
-
-
-    /**
-     * Exporta las incidencias resueltas a un archivo XML.
-     */
-    public static void exportarResueltasXML() {
-        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasResueltas(), "resueltas.xml");
-    }
-
-    /**
-     * Exporta las incidencias eliminadas a un archivo XML.
-     */
-    public static void exportarEliminadasXML() {
-        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasEliminadas(), "eliminadas.xml");
-    }
+//    public static void exportarPendientesXML() {
+//        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasPendientes(), "pendientes.xml");
+//    }
+//
+//
+//    /**
+//     * Exporta las incidencias resueltas a un archivo XML.
+//     */
+//    public static void exportarResueltasXML() {
+//        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasResueltas(), "resueltas.xml");
+//    }
+//
+//    /**
+//     * Exporta las incidencias eliminadas a un archivo XML.
+//     */
+//    public static void exportarEliminadasXML() {
+//        XMLExportar.exportarAXML(IncidenciasDAO.getIncidenciasEliminadas(), "eliminadas.xml");
+//    }
 }

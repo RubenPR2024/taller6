@@ -1,38 +1,52 @@
 package persistencia;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import dominio.Estado;
 import dominio.Incidencias;
-import dominio.Listas;
 /**
  * Clase que proporciona los métodos para la persistencia de incidencias
  */
 public class IncidenciasDAO {
-	/**
-	 * Importamos los array list
-	 */
-	private static Listas listas = new Listas();
-
-	/**
-	 * Método para registrar una nueva incidencia
-	 * @param estado	Estado de la incidencia
-	 * @param puesto	Puesto de la incidencia
-	 * @param descripcion	Descripcion de la incidencia
-	 * @return True si la operacion se ha realizado o false en caso contrario
-	 */
+	
+	private Connection conexion;
+	
     public static boolean registrarIncidencia(Estado estado, int puesto, String descripcion) {
+        String sql = "INSERT INTO incidencias (identificador, estado, puesto, descripcion, fechaIncidencia, fechaRegistro) VALUES (?, ?, ?, ?, ?, ?)";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        
         try {
-            String codigo = generarCodigoIncidencia(new Date());
-            Incidencias incidencia = new Incidencias(codigo, estado, puesto, descripcion);
-            listas.agregarIncidencia(incidencia);
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+        	con = ConexionBD.conectar();
+        	sentencia = con.prepareStatement(sql);
+        	String codigo = generarCodigoIncidencia(new Date());
+        	
+        	sentencia.setString(1, codigo);
+        	sentencia.setString(2, estado.toString());
+        	sentencia.setInt(3, puesto);
+        	sentencia.setString(4, descripcion);
+        	sentencia.setTimestamp(5, new Timestamp(new Date().getTime()));
+        	sentencia.setTimestamp(6, new Timestamp(new Date().getTime()));
+        	
+        	int filasAfectadas = sentencia.executeUpdate();
+        	return filasAfectadas > 0;
+        	
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        	return false;
+        } finally {
+        	ConexionBD.cerrarConexion(con);
         }
+        
     }
 
     /**
@@ -41,7 +55,33 @@ public class IncidenciasDAO {
      * @return	Devuelve incidencia en contrada o null si no encontró nada
      */
     public static Incidencias buscarIncidencia(String identificador) {
-        return listas.buscarIncidencia(identificador);
+        String sql = "SELECT * FROM incidencias_pendientes WHERE identificador = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        ResultSet rs = null;
+        
+        try {
+        	con = ConexionBD.conectar();
+        	sentencia = con.prepareStatement(sql);
+        	sentencia.setString(1, identificador);
+        	rs = sentencia.executeQuery();
+        	
+        	if (rs.next()) {
+        		String iden = rs.getString("identificador");
+        		Estado estado = Estado.valueOf(rs.getString("estado"));
+        		int Puesto = rs.getInt("puesto");
+        		String desc = rs.getString("descripcion");
+        		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
+        		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
+        		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+        		return incidencia;
+        	}
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        } finally {
+        	ConexionBD.cerrarConexion(con);
+        }
+        return null;
     }
 
     /**
@@ -52,13 +92,23 @@ public class IncidenciasDAO {
      * @return	Devuelve true si se eliminó la incidencia o false en caso contrario
      */
     public static boolean eliminarIncidencia(String identificador, Date fechaEliminacion, String causaEliminacion) {
-        Incidencias incidencia = buscarIncidencia(identificador);
-        if (incidencia != null && incidencia.getEstado() != Estado.Resuelta) {
-            incidencia.eliminarIncidencia(fechaEliminacion, causaEliminacion);
-            listas.eliminarIncidencia(incidencia);
-            return true;
-        }
-        return false;
+    	String sql = "DELETE FROM incidencias WHERE identificador = ?";
+    	Connection con = null;
+    	PreparedStatement sentencia = null;
+    	
+    	try {
+    		con = ConexionBD.conectar();
+    		sentencia = con.prepareStatement(sql);
+    		sentencia.setString(1, identificador);
+    		
+    		int filasEliminadas = sentencia.executeUpdate();
+    		return filasEliminadas > 0;
+    	} catch (SQLException e) {
+    		e.printStackTrace();
+    		return false;
+    	} finally {
+    		ConexionBD.cerrarConexion(con);
+    	}
     }
 
     /**
@@ -69,13 +119,27 @@ public class IncidenciasDAO {
      * @return					Devuelve true si la ha resuelto o false en caso contrario
      */
     public static boolean resolverIncidencia(String identificador, Date fechaResolucion, String resolucion) {
-        Incidencias incidencia = buscarIncidencia(identificador);
-        if (incidencia != null && incidencia.getEstado() != Estado.Resuelta) {
-            incidencia.resolverIncidencia(fechaResolucion, resolucion);
-            listas.resolverIncidencia(incidencia);
-            return true;
+        String sql = "UPDATE incidencias SET estado = ?, fechaResolucion = ?, resolucion = ?, WHERE identificador = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        
+        try {
+        	con = ConexionBD.conectar();
+        	sentencia = con.prepareStatement(sql);
+        	sentencia.setString(1, Estado.Resuelta.toString());
+        	sentencia.setTimestamp(2, new Timestamp(fechaResolucion.getTime()));
+        	sentencia.setString(3, resolucion);
+        	sentencia.setString(4, identificador);
+        	
+        	int filasActualizadas = sentencia.executeUpdate();
+        	return filasActualizadas > 0;
+        	
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        	return false;
+        } finally {
+        	ConexionBD.cerrarConexion(con);
         }
-        return false;
     }
 
     /**
@@ -85,13 +149,25 @@ public class IncidenciasDAO {
      * @return					Devuelve true si la ha modificado o false en caso contrario
      */
     public static boolean modificarIncidencia(String identificador, String nuevaDescripcion) {
-        Incidencias incidencia = buscarIncidencia(identificador);
-        if (incidencia != null && incidencia.getEstado() == Estado.Pendiente) {
-            incidencia.setDescripcion(nuevaDescripcion);
-            listas.actualizarIncidencia(incidencia);
-            return true;
+        String sql = "UPDATE incidencias SET descripcion = ? WHERE identificador = ? AND estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        
+        try {
+        	con = ConexionBD.conectar();
+        	sentencia = con.prepareStatement(sql);
+        	sentencia.setString(1, nuevaDescripcion);
+        	sentencia.setString(2, identificador);
+        	sentencia.setString(3, Estado.Pendiente.toString());
+        	
+        	int filasActualizadas = sentencia.executeUpdate();
+        	return filasActualizadas > 0;
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        	return false;
+        } finally {
+        	ConexionBD.cerrarConexion(con);
         }
-        return false;
     }
 
     /**
@@ -100,64 +176,164 @@ public class IncidenciasDAO {
      * @return					Devuelve true si lo ha devuelto o false en caso contrario
      */
     public static boolean devolverIncidenciasResueltas(String identificador) {
-        for (Incidencias incidencia : listas.getIncidenciasResueltas()) {
-            if (incidencia.getIdentificador().equals(identificador)) {
-                // Remover de la lista de resueltas
-                listas.getIncidenciasResueltas().remove(incidencia);
+        String sql = "UPDATE incidencias SET estado = ?, fechaResolucion = ?, resolucion = ? WHERE identificador = ? AND estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
 
-                // Actualizar estado y remover datos de resolución
-                incidencia.setEstado(Estado.Pendiente);
-                incidencia.setFechaResolucion(null);
-                incidencia.setResolucion(null);
+        try {
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
 
-                // Agregar a la lista de pendientes
-                listas.agregarIncidencia(incidencia);
-                return true;
-            }
+            sentencia.setString(1, Estado.Pendiente.toString());
+            sentencia.setTimestamp(2, null);
+            sentencia.setString(3, null);
+            sentencia.setString(4, identificador);
+            sentencia.setString(5, Estado.Resuelta.toString());
+
+            int filasActualizadas = sentencia.executeUpdate();
+            return filasActualizadas > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+        	ConexionBD.cerrarConexion(con);
         }
-        System.out.println("No hay incidencias resueltas para devolver.");
-        return false;
     }
 
-    /**
-     * Métodod que modifica una incidencia resuelta
-     * @param identificador			Identificador de la incidencia resuelta a modificar
-     * @param nuevaResolucion		Nueva resolucion de la incidencia resuelta
-     * @return						Devuelve true si lo ha modificado o false en caso contrario
-     */
     public static boolean modificarIncidenciaResuelta(String identificador, String nuevaResolucion) {
-        for (Incidencias incidencia : listas.getIncidenciasResueltas()) {
-            if (incidencia.getIdentificador().equals(identificador)) {
-                incidencia.setResolucion(nuevaResolucion);
-                return true;
-            }
-        }
-        System.out.println("La incidencia no existe o no está resuelta.");
-        return false;
-    }
+        String sql = "UPDATE incidencias SET resolucion = ? WHERE identificador = ? AND estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
 
+        try {
+        	con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+
+            sentencia.setString(1, nuevaResolucion);
+            sentencia.setString(2, identificador);
+            sentencia.setString(3, Estado.Resuelta.toString());
+
+            int filasActualizadas = sentencia.executeUpdate();
+            return filasActualizadas > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+        	ConexionBD.cerrarConexion(con);
+        }
+    }
     /**
      * Método que devuelve el array list de incidencias pendientes
      * @return	Lista de incidencias pendiente
      */
-    public static ArrayList<Incidencias> getIncidenciasPendientes() {
-        return listas.getIncidenciasPendientes();
+    public static List<Incidencias> getIncidenciasPendientes() {
+        List<Incidencias> incidencias = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        ResultSet rs = null;
+        
+        try {
+        con = ConexionBD.conectar();
+    	sentencia = con.prepareStatement(sql);
+    	sentencia.setString(1, Estado.Pendiente.toString());
+    	rs = sentencia.executeQuery();
+    	
+    	while (rs.next()) {
+    		String iden = rs.getString("identificador");
+    		Estado estado = Estado.valueOf(rs.getString("estado"));
+    		int Puesto = rs.getInt("puesto");
+    		String desc = rs.getString("descripcion");
+    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
+    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
+    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+    		incidencias.add(incidencia);
+        }
+    	
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        } finally {
+        	ConexionBD.cerrarConexion(con);
+        }
+		return incidencias;
     }
 
     /**
      * Método que devuelve el array list de incidencias eliminadas
      * @return Lista de incidencias eliminadas
      */
-    public static ArrayList<Incidencias> getIncidenciasEliminadas() {
-        return listas.getIncidenciasEliminadas();
+    public static List<Incidencias> getIncidenciasEliminadas() {
+    	List<Incidencias> incidencias = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        ResultSet rs = null;
+        
+        try {
+        con = ConexionBD.conectar();
+    	sentencia = con.prepareStatement(sql);
+    	sentencia.setString(1, Estado.Eliminada.toString());
+    	rs = sentencia.executeQuery();
+    	
+    	while (rs.next()) {
+    		String iden = rs.getString("identificador");
+    		Estado estado = Estado.valueOf(rs.getString("estado"));
+    		int Puesto = rs.getInt("puesto");
+    		String desc = rs.getString("descripcion");
+    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
+    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
+    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+    		incidencia.setFechaEliminacion(rs.getTimestamp("fechaEliminacion"));
+            incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
+    		incidencias.add(incidencia);
+        }
+    	
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        } finally {
+        	ConexionBD.cerrarConexion(con);
+        }
+		return incidencias;
     }
 
     /**
      * Método que devuelve el array list de incidencias resueltas
      * @return Lista de incidencias resueltas
      */
-    public static ArrayList<Incidencias> getIncidenciasResueltas() {
-        return listas.getIncidenciasResueltas();
+    public static List<Incidencias> getIncidenciasResueltas() {
+    	List<Incidencias> incidencias = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        Connection con = null;
+        PreparedStatement sentencia = null;
+        ResultSet rs = null;
+        
+        try {
+        con = ConexionBD.conectar();
+    	sentencia = con.prepareStatement(sql);
+    	sentencia.setString(1, Estado.Resuelta.toString());
+    	rs = sentencia.executeQuery();
+    	
+    	while (rs.next()) {
+    		String iden = rs.getString("identificador");
+    		Estado estado = Estado.valueOf(rs.getString("estado"));
+    		int Puesto = rs.getInt("puesto");
+    		String desc = rs.getString("descripcion");
+    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
+    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
+    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+    		incidencia.setFechaResolucion(rs.getTimestamp("fechaResolucion"));
+            incidencia.setResolucion(rs.getString("resolucion"));
+    		incidencias.add(incidencia);
+        }
+    	
+        } catch (SQLException e) {
+        	e.printStackTrace();
+        } finally {
+        	ConexionBD.cerrarConexion(con);
+        }
+		return incidencias;
     }
 
     /**
@@ -169,9 +345,10 @@ public class IncidenciasDAO {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy-HH:mm");
         String fechaFormateada = dateFormat.format(fechaRegistro);
 
-        // Cuenta el número de incidencias registradas en la misma fecha
+        List<Incidencias> incidenciasPendientes = getIncidenciasPendientes();
+        
         int contador = 1;
-        for (Incidencias incidencia : listas.getIncidenciasPendientes()) {
+        for (Incidencias incidencia : incidenciasPendientes) {
             Date fechaIncidencia = incidencia.getFechaIncidencia();
             if (isSameDay(fechaRegistro, fechaIncidencia)) {
                 contador++;
@@ -196,21 +373,21 @@ public class IncidenciasDAO {
     /**
      * Método que exporta la lista de pendientes a XML
      */
-    public static void exportarPendientesXML() {
-        XMLExportar.exportarAXML(listas.getIncidenciasPendientes(), "pendientes.xml");
-    }
-
-    /**
-     * Método que exporta la lista de resueltas a XML
-     */
-    public static void exportarResueltasXML() {
-        XMLExportar.exportarAXML(listas.getIncidenciasResueltas(), "resueltas.xml");
-    }
-
-    /**
-     * Método que exporta la lista de eliminadas a XML
-     */
-    public static void exportarEliminadasXML() {
-        XMLExportar.exportarAXML(listas.getIncidenciasEliminadas(), "eliminadas.xml");
-    }
+//    public static void exportarPendientesXML() {
+//        XMLExportar.exportarAXML(listas.getIncidenciasPendientes(), "pendientes.xml");
+//    }
+//
+//    /**
+//     * Método que exporta la lista de resueltas a XML
+//     */
+//    public static void exportarResueltasXML() {
+//        XMLExportar.exportarAXML(listas.getIncidenciasResueltas(), "resueltas.xml");
+//    }
+//
+//    /**
+//     * Método que exporta la lista de eliminadas a XML
+//     */
+//    public static void exportarEliminadasXML() {
+//        XMLExportar.exportarAXML(listas.getIncidenciasEliminadas(), "eliminadas.xml");
+//    }
 }
