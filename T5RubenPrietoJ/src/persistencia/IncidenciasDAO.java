@@ -71,10 +71,10 @@ public class IncidenciasDAO {
                 int puesto = rs.getInt("puesto");
                 String descripcion = rs.getString("descripcion");
                 Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
-                incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
-                incidencia.setFechaResolucion(rs.getTimestamp("fechaResolucion"));
+                incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
+                incidencia.setFechaResolucion(rs.getDate("fechaResolucion"));
                 incidencia.setResolucion(rs.getString("resolucion"));
-                incidencia.setFechaEliminacion(rs.getTimestamp("fechaEliminacion"));
+                incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
                 incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
                 return incidencia;
         	}
@@ -129,7 +129,7 @@ public class IncidenciasDAO {
         	con = ConexionBD.conectar();
         	sentencia = con.prepareStatement(sql);
         	sentencia.setString(1, Estado.Resuelta.toString());
-        	sentencia.setTimestamp(2, new Timestamp(fechaResolucion.getTime()));
+        	sentencia.setDate(2, (java.sql.Date) fechaResolucion);
         	sentencia.setString(3, resolucion);
         	sentencia.setString(4, identificador);
         	
@@ -187,7 +187,7 @@ public class IncidenciasDAO {
             sentencia = con.prepareStatement(sql);
 
             sentencia.setString(1, Estado.Pendiente.toString());
-            sentencia.setTimestamp(2, null);
+            sentencia.setDate(2, null);
             sentencia.setString(3, null);
             sentencia.setString(4, identificador);
             sentencia.setString(5, Estado.Resuelta.toString());
@@ -249,7 +249,7 @@ public class IncidenciasDAO {
     		int Puesto = rs.getInt("puesto");
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
+    		incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
     		incidencias.add(incidencia);
         }
     	
@@ -284,8 +284,8 @@ public class IncidenciasDAO {
     		int Puesto = rs.getInt("puesto");
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaIncidencia(rs.getTimestamp("fechaIncidencia"));
-    		incidencia.setFechaEliminacion(rs.getTimestamp("fechaEliminacion"));
+    		incidencia.setFechaIncidencia(rs.getDate("fechaIncidencia"));
+    		incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
             incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
     		incidencias.add(incidencia);
         }
@@ -321,8 +321,8 @@ public class IncidenciasDAO {
     		int Puesto = rs.getInt("puesto");
     		String desc = rs.getString("descripcion");
     		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaRegistro(rs.getTimestamp("fechaRegistro"));
-    		incidencia.setFechaResolucion(rs.getTimestamp("fechaResolucion"));
+    		incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
+    		incidencia.setFechaResolucion(rs.getDate("fechaResolucion"));
             incidencia.setResolucion(rs.getString("resolucion"));
     		incidencias.add(incidencia);
         }
