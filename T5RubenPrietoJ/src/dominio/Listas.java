@@ -2,8 +2,6 @@ package dominio;
 
 import java.util.ArrayList;
 
-import persistencia.GestorArchivos;
-import persistencia.XMLExportar;
 
 /**
  * Clase que se encarga de todos los movimientos relacionados con las listas
@@ -25,9 +23,9 @@ public class Listas {
 		 * Constructor de la clase Lista
 		 */
 	    public Listas() {
-	        incidencias_pendientes = GestorArchivos.cargarIncidenciasPendientes();
-	        incidencias_resueltas = GestorArchivos.cargarIncidenciasResueltas();
-	        incidencias_eliminadas = GestorArchivos.cargarIncidenciasEliminadas();
+	        incidencias_pendientes = new ArrayList<>();
+	        incidencias_resueltas = new ArrayList<>();
+	        incidencias_eliminadas = new ArrayList<>();
 	    }
 
 	    /**
@@ -60,7 +58,6 @@ public class Listas {
 	     */
 	    public void agregarIncidencia(Incidencias incidencia) {
 	        incidencias_pendientes.add(incidencia);
-	        GestorArchivos.guardarIncidenciasPendientes(incidencias_pendientes);
 	    }
 
 	    /**
@@ -69,9 +66,7 @@ public class Listas {
 	     */
 	    public void eliminarIncidencia(Incidencias incidencia) {
 	        incidencias_pendientes.remove(incidencia);
-	        GestorArchivos.guardarIncidenciasPendientes(incidencias_pendientes);
 	        incidencias_eliminadas.add(incidencia);
-	        GestorArchivos.guardarIncidenciasEliminadas(incidencias_eliminadas);
 	    }
 
 	    /**
@@ -80,9 +75,7 @@ public class Listas {
 	     */
 	    public void resolverIncidencia(Incidencias incidencia) {
 	        incidencias_pendientes.remove(incidencia);
-	        GestorArchivos.guardarIncidenciasPendientes(incidencias_pendientes);
 	        incidencias_resueltas.add(incidencia);
-	        GestorArchivos.guardarIncidenciasResueltas(incidencias_resueltas);
 	    }
 
 	    /**
@@ -111,12 +104,5 @@ public class Listas {
 	            }
 	        }
 	    }
-	    /**
-	     * Método que se encarga de guardar los array list en los ficheros
-	     */
-	    public void guardarListasEnArchivos() {
-	        GestorArchivos.guardarIncidenciasPendientes(incidencias_pendientes);
-	        GestorArchivos.guardarIncidenciasResueltas(incidencias_resueltas);
-	        GestorArchivos.guardarIncidenciasEliminadas(incidencias_eliminadas);
-	    }
+
 }

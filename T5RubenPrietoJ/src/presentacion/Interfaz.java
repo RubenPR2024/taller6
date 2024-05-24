@@ -3,8 +3,11 @@ package presentacion;
 import dominio.Estado;
 import dominio.Incidencias;
 import dominio.Listas;
+import persistencia.ConexionBD;
 import persistencia.IncidenciasDAO;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,6 +37,7 @@ public class Interfaz {
     /**
      * Menu de bienvenida
      */
+    Connection con = null;
     public static void imprimirBienvenida() {
         System.out.println("*******************************");
         System.out.println("REGISTRO DE INCIDENCIAS");
@@ -57,20 +61,7 @@ public class Interfaz {
         System.out.println("8. Mostrar incidencias pendientes");
         System.out.println("9. Mostrar incidencias resueltas");
         System.out.println("10. Mostrar incidencias eliminadas");
-        System.out.println("11. Exportar XML");
-        System.out.println("         1.Exportar pendientes");
-        System.out.println("         2.Exportar resueltas");
-        System.out.println("         3.Exportar eliminadas");
-        System.out.println("12. Salir");
-    }
-
-    /**
-     * Submenu de XML
-     */
-    public static void menuXML() {
-        System.out.println("1. Exportar pendientes");
-        System.out.println("2. Exportar resueltas");
-        System.out.println("3. Exportar eliminadas");
+        System.out.println("11. Salir");
     }
 
     /**
@@ -226,6 +217,9 @@ public class Interfaz {
      * Método principal para ejecutar el menú y las operaciones
      */
     public static void ejecutar() {
+    	Connection con = null;
+        try {
+            con = ConexionBD.conectar();
         imprimirBienvenida();
         boolean salir = false;
         while (!salir) {
@@ -236,19 +230,19 @@ public class Interfaz {
                 case 1 -> {
                     ArrayList<String> datosIncidencia = registrarIncidencia();
                     String codigo = IncidenciasDAO.generarCodigoIncidencia(new Date());
-                    boolean resultado = IncidenciasDAO.registrarIncidencia(Estado.Pendiente,
+                    boolean resultado = IncidenciasDAO.registrarIncidencia(con, Estado.Pendiente,
                             Integer.parseInt(datosIncidencia.get(0)), datosIncidencia.get(1));
                     informaResultado(1, resultado);
                 }
                 case 2 -> {
                     String identificador = identificadorIncidencia(2);
-                    boolean resultado = IncidenciasDAO.buscarIncidencia(identificador) != null;
+                    boolean resultado = IncidenciasDAO.buscarIncidencia(con, identificador) != null;
                     informaResultado(2, resultado);
                 }
                 case 3 -> {
                     String identificador = identificadorIncidencia(3);
                     String nuevaDescripcion = modificarIncidencia();
-                    boolean resultado = IncidenciasDAO.modificarIncidencia(identificador, nuevaDescripcion);
+                    boolean resultado = IncidenciasDAO.modificarIncidencia(con, identificador, nuevaDescripcion);
                     informaResultado(3, resultado);
                 }
                 case 4 -> {
@@ -256,7 +250,7 @@ public class Interfaz {
                     ArrayList<String> datosEliminacion = eliminarIncidencia();
                     try {
                     Date fechaEliminacion = new SimpleDateFormat("dd/MM/yyyy").parse(datosEliminacion.get(0));
-                    boolean resultado = IncidenciasDAO.eliminarIncidencia(identificador, fechaEliminacion, datosEliminacion.get(1));
+                    boolean resultado = IncidenciasDAO.eliminarIncidencia(con, identificador, fechaEliminacion, datosEliminacion.get(1));
 					informaResultado(4, resultado);
 	                } catch (ParseException e) {
 	                    e.printStackTrace();
@@ -267,7 +261,7 @@ public class Interfaz {
                     ArrayList<String> datosResolucion = resolverIncidencia();
                     try {
                     	Date fechaResolucion = new SimpleDateFormat("dd/MM/yyyy").parse(datosResolucion.get(0));
-                        boolean resultado = IncidenciasDAO.resolverIncidencia(identificador, fechaResolucion, datosResolucion.get(1));
+                        boolean resultado = IncidenciasDAO.resolverIncidencia(con, identificador, fechaResolucion, datosResolucion.get(1));
                         informaResultado(5, resultado);
                     } catch (ParseException e) {
                         e.printStackTrace();
@@ -276,16 +270,16 @@ public class Interfaz {
                 case 6 -> {
                     String identificador = identificadorIncidencia(6);
                     String nuevaDescripcion = modificarIncidenciaResuelta();
-                    boolean resultado = IncidenciasDAO.modificarIncidenciaResuelta(identificador, nuevaDescripcion);
+                    boolean resultado = IncidenciasDAO.modificarIncidenciaResuelta(con, identificador, nuevaDescripcion);
                     informaResultado(6, resultado);
                 }
                 case 7 -> {
                 	String identificador = identificadorIncidencia(7);
-                    boolean resultado = IncidenciasDAO.devolverIncidenciasResueltas(identificador);
+                    boolean resultado = IncidenciasDAO.devolverIncidenciasResueltas(con, identificador);
                     informaResultado(7, resultado);
                 }
                 case 8 -> {
-                    ArrayList<Incidencias> incidenciasPendientes = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasPendientes();
+                    ArrayList<Incidencias> incidenciasPendientes = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasPendientes(con);
                     if (incidenciasPendientes.isEmpty()) {
                         informaResultado(8, false);
                     } else {
@@ -293,7 +287,7 @@ public class Interfaz {
                     }
                 }
                 case 9 -> {
-                    ArrayList<Incidencias> incidenciasResueltas = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasResueltas();
+                    ArrayList<Incidencias> incidenciasResueltas = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasResueltas(con);
                     if (incidenciasResueltas.isEmpty()) {
                         informaResultado(9, false);
                     } else {
@@ -301,30 +295,23 @@ public class Interfaz {
                     }
                 }
                 case 10 -> {
-                    ArrayList<Incidencias> incidenciasEliminadas = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasEliminadas();
+                    ArrayList<Incidencias> incidenciasEliminadas = (ArrayList<Incidencias>) IncidenciasDAO.getIncidenciasEliminadas(con);
                     if (incidenciasEliminadas.isEmpty()) {
                         informaResultado(10, false);
                     } else {
                         incidenciasEliminadas.forEach(System.out::println);
                     }
                 }
-                case 11 -> {
-                	menuXML();
-                    System.out.print("Seleccione una opción: ");
-                    int opcionXML = Integer.parseInt(sc.nextLine());
-                    switch (opcionXML) {
-//                        case 1 -> Logica.exportarPendientesXML();
-//                        case 2 -> Logica.exportarResueltasXML();
-//                        case 3 -> Logica.exportarEliminadasXML();
-                        default -> System.out.println("Opción no válida.");
-                    }
-                }
-                case 12 -> salir = true;
+                case 11 -> salir = true;
                 default -> System.out.println("Opción no válida, por favor intente de nuevo.");
             }
             esperaIntro();
         }
         System.out.println("Gracias por usar la aplicación. ¡Hasta luego!");
+    } catch (SQLException e) {
+        e.printStackTrace();
+    } finally {
+        ConexionBD.cerrarConexion(con);
     }
-    
+    }
 }
