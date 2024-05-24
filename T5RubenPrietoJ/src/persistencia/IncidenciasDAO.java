@@ -19,54 +19,53 @@ import dominio.Incidencias;
 public class IncidenciasDAO {
 	
 	private Connection conexion;
-	
+
     public static boolean registrarIncidencia(Estado estado, int puesto, String descripcion) {
-    	String sql = "INSERT INTO incidencias (identificador, estado, puesto, descripcion, fechaRegistro) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO incidencias_pendientes (identificador, estado, puesto, descripcion, fechaRegistro) VALUES (?, ?, ?, ?, ?)";
         Connection con = null;
         PreparedStatement sentencia = null;
-        
+
         try {
-        	con = ConexionBD.conectar();
-        	sentencia = con.prepareStatement(sql);
-        	String codigo = generarCodigoIncidencia(new Date());
-        	
-        	sentencia.setString(1, codigo);
-        	sentencia.setString(2, estado.toString());
-        	sentencia.setInt(3, puesto);
-        	sentencia.setString(4, descripcion);
-        	sentencia.setDate(5, new java.sql.Date(new Date().getTime()));
-        	
-        	int filasAfectadas = sentencia.executeUpdate();
-        	return filasAfectadas > 0;
-        	
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+            String codigo = generarCodigoIncidencia(new Date());
+
+            sentencia.setString(1, codigo);
+            sentencia.setString(2, estado.toString());
+            sentencia.setInt(3, puesto);
+            sentencia.setString(4, descripcion);
+            sentencia.setDate(5, new java.sql.Date(new Date().getTime()));
+
+            int filasAfectadas = sentencia.executeUpdate();
+            return filasAfectadas > 0;
+
         } catch (SQLException e) {
-        	e.printStackTrace();
-        	return false;
+            e.printStackTrace();
+            return false;
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
-        
+
     }
 
-    /**
-     * Método para buscar la incidencia
-     * @param identificador Identificador de la incidencia a buscar
-     * @return	Devuelve incidencia en contrada o null si no encontró nada
-     */
     public static Incidencias buscarIncidencia(String identificador) {
-        String sql = "SELECT * FROM incidencias WHERE identificador = ?";
+        String sql = "SELECT * FROM incidencias_pendientes WHERE identificador = ? UNION " +
+                     "SELECT * FROM incidencias_resueltas WHERE identificador = ? UNION " +
+                     "SELECT * FROM incidencias_eliminadas WHERE identificador = ?";
         Connection con = null;
         PreparedStatement sentencia = null;
         ResultSet rs = null;
-        
+
         try {
-        	con = ConexionBD.conectar();
-        	sentencia = con.prepareStatement(sql);
-        	sentencia.setString(1, identificador);
-        	rs = sentencia.executeQuery();
-        	
-        	if (rs.next()) {
-        		String iden = rs.getString("identificador");
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+            sentencia.setString(1, identificador);
+            sentencia.setString(2, identificador);
+            sentencia.setString(3, identificador);
+            rs = sentencia.executeQuery();
+
+            if (rs.next()) {
+                String iden = rs.getString("identificador");
                 Estado estado = Estado.valueOf(rs.getString("estado"));
                 int puesto = rs.getInt("puesto");
                 String descripcion = rs.getString("descripcion");
@@ -77,262 +76,297 @@ public class IncidenciasDAO {
                 incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
                 incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
                 return incidencia;
-        	}
+            }
         } catch (SQLException e) {
-        	e.printStackTrace();
+            e.printStackTrace();
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
         return null;
     }
 
-    /**
-     * Método para eliminar una incidencia
-     * @param identificador	Identificador de la incidencia a eliminar
-     * @param fechaEliminacion	Fecha de eliminacion de la incidencia
-     * @param causaEliminacion	Causa de eliminacion de la incidencia
-     * @return	Devuelve true si se eliminó la incidencia o false en caso contrario
-     */
     public static boolean eliminarIncidencia(String identificador, Date fechaEliminacion, String causaEliminacion) {
-    	String sql = "DELETE FROM incidencias WHERE identificador = ?";
-    	Connection con = null;
-    	PreparedStatement sentencia = null;
-    	
-    	try {
-    		con = ConexionBD.conectar();
-    		sentencia = con.prepareStatement(sql);
-    		sentencia.setString(1, identificador);
-    		
-    		int filasEliminadas = sentencia.executeUpdate();
-    		return filasEliminadas > 0;
-    	} catch (SQLException e) {
-    		e.printStackTrace();
-    		return false;
-    	} finally {
-    		ConexionBD.cerrarConexion(con);
-    	}
+        String sqlDelete = "DELETE FROM incidencias_pendientes WHERE identificador = ?";
+        String sqlInsert = "INSERT INTO incidencias_eliminadas (identificador, estado, puesto, descripcion, fechaRegistro, fechaEliminacion, causaEliminacion) " +
+                           "SELECT identificador, estado, puesto, descripcion, fechaRegistro, ?, ? FROM incidencias_pendientes WHERE identificador = ?";
+        Connection con = null;
+        PreparedStatement sentenciaDelete = null;
+        PreparedStatement sentenciaInsert = null;
+
+        try {
+            con = ConexionBD.conectar();
+            con.setAutoCommit(false);
+
+            sentenciaInsert = con.prepareStatement(sqlInsert);
+            sentenciaInsert.setDate(1, new java.sql.Date(fechaEliminacion.getTime()));
+            sentenciaInsert.setString(2, causaEliminacion);
+            sentenciaInsert.setString(3, identificador);
+            int filasInsertadas = sentenciaInsert.executeUpdate();
+
+            if (filasInsertadas > 0) {
+                sentenciaDelete = con.prepareStatement(sqlDelete);
+                sentenciaDelete.setString(1, identificador);
+                int filasEliminadas = sentenciaDelete.executeUpdate();
+                if (filasEliminadas > 0) {
+                    con.commit();
+                    return true;
+                }
+            }
+            con.rollback();
+            return false;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            ConexionBD.cerrarConexion(con);
+        }
     }
 
-    /**
-     * Método para resolver una incidencia
-     * @param identificador		Identificador de la incidencia a resolver
-     * @param fechaResolucion	Fecha de resolucion de la incidencia
-     * @param resolucion		Resolucion de la incidenica
-     * @return					Devuelve true si la ha resuelto o false en caso contrario
-     */
     public static boolean resolverIncidencia(String identificador, Date fechaResolucion, String resolucion) {
-        String sql = "UPDATE incidencias SET estado = ?, fechaResolucion = ?, resolucion = ?, WHERE identificador = ?";
+        String sqlDelete = "DELETE FROM incidencias_pendientes WHERE identificador = ?";
+        String sqlInsert = "INSERT INTO incidencias_resueltas (identificador, estado, puesto, descripcion, fechaRegistro, fechaResolucion, resolucion) " +
+                           "SELECT identificador, estado, puesto, descripcion, fechaRegistro, ?, ? FROM incidencias_pendientes WHERE identificador = ?";
         Connection con = null;
-        PreparedStatement sentencia = null;
-        
+        PreparedStatement sentenciaDelete = null;
+        PreparedStatement sentenciaInsert = null;
+
         try {
-        	con = ConexionBD.conectar();
-        	sentencia = con.prepareStatement(sql);
-        	sentencia.setString(1, Estado.Resuelta.toString());
-        	sentencia.setDate(2, (java.sql.Date) fechaResolucion);
-        	sentencia.setString(3, resolucion);
-        	sentencia.setString(4, identificador);
-        	
-        	int filasActualizadas = sentencia.executeUpdate();
-        	return filasActualizadas > 0;
-        	
+            con = ConexionBD.conectar();
+            con.setAutoCommit(false);
+
+            sentenciaInsert = con.prepareStatement(sqlInsert);
+            sentenciaInsert.setDate(1, new java.sql.Date(fechaResolucion.getTime()));
+            sentenciaInsert.setString(2, resolucion);
+            sentenciaInsert.setString(3, identificador);
+            int filasInsertadas = sentenciaInsert.executeUpdate();
+
+            if (filasInsertadas > 0) {
+                sentenciaDelete = con.prepareStatement(sqlDelete);
+                sentenciaDelete.setString(1, identificador);
+                int filasEliminadas = sentenciaDelete.executeUpdate();
+                if (filasEliminadas > 0) {
+                    con.commit();
+                    return true;
+                }
+            }
+            con.rollback();
+            return false;
+
         } catch (SQLException e) {
-        	e.printStackTrace();
-        	return false;
+            e.printStackTrace();
+            return false;
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            ConexionBD.cerrarConexion(con);
         }
     }
-
-    /**
-     * Método que modifica la descripcion una incidencia pendiente
-     * @param identificador		Identificador de la incidencia pendiente a modificar
-     * @param nuevaDescripcion	Nueva descripcion de la incidencia
-     * @return					Devuelve true si la ha modificado o false en caso contrario
-     */
+    
     public static boolean modificarIncidencia(String identificador, String nuevaDescripcion) {
-        String sql = "UPDATE incidencias SET descripcion = ? WHERE identificador = ? AND estado = ?";
-        Connection con = null;
-        PreparedStatement sentencia = null;
-        
-        try {
-        	con = ConexionBD.conectar();
-        	sentencia = con.prepareStatement(sql);
-        	sentencia.setString(1, nuevaDescripcion);
-        	sentencia.setString(2, identificador);
-        	sentencia.setString(3, Estado.Pendiente.toString());
-        	
-        	int filasActualizadas = sentencia.executeUpdate();
-        	return filasActualizadas > 0;
-        } catch (SQLException e) {
-        	e.printStackTrace();
-        	return false;
-        } finally {
-        	ConexionBD.cerrarConexion(con);
-        }
-    }
-
-    /**
-     * Método que devuelve una una incidencia resuelta a pendiente
-     * @param identificador		Identificador de la incidencia a devolver
-     * @return					Devuelve true si lo ha devuelto o false en caso contrario
-     */
-    public static boolean devolverIncidenciasResueltas(String identificador) {
-        String sql = "UPDATE incidencias SET estado = ?, fechaResolucion = ?, resolucion = ? WHERE identificador = ? AND estado = ?";
+        String sql = "UPDATE incidencias_pendientes SET descripcion = ? WHERE identificador = ?";
         Connection con = null;
         PreparedStatement sentencia = null;
 
         try {
             con = ConexionBD.conectar();
             sentencia = con.prepareStatement(sql);
-
-            sentencia.setString(1, Estado.Pendiente.toString());
-            sentencia.setDate(2, null);
-            sentencia.setString(3, null);
-            sentencia.setString(4, identificador);
-            sentencia.setString(5, Estado.Resuelta.toString());
+            sentencia.setString(1, nuevaDescripcion);
+            sentencia.setString(2, identificador);
 
             int filasActualizadas = sentencia.executeUpdate();
             return filasActualizadas > 0;
-
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
     }
-
+    
     public static boolean modificarIncidenciaResuelta(String identificador, String nuevaResolucion) {
-        String sql = "UPDATE incidencias SET resolucion = ? WHERE identificador = ? AND estado = ?";
+        String sql = "UPDATE incidencias_resueltas SET resolucion = ? WHERE identificador = ?";
         Connection con = null;
         PreparedStatement sentencia = null;
 
         try {
-        	con = ConexionBD.conectar();
+            con = ConexionBD.conectar();
             sentencia = con.prepareStatement(sql);
-
             sentencia.setString(1, nuevaResolucion);
             sentencia.setString(2, identificador);
-            sentencia.setString(3, Estado.Resuelta.toString());
 
             int filasActualizadas = sentencia.executeUpdate();
             return filasActualizadas > 0;
-
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
     }
-    /**
-     * Método que devuelve el array list de incidencias pendientes
-     * @return	Lista de incidencias pendiente
-     */
+    
+    public static boolean devolverIncidenciasResueltas(String identificador) {
+        String selectSQL = "SELECT * FROM incidencias_resueltas WHERE identificador = ?";
+        String insertSQL = "INSERT INTO incidencias_pendientes (identificador, estado, puesto, descripcion, fechaRegistro) VALUES (?, ?, ?, ?, ?)";
+        String deleteSQL = "DELETE FROM incidencias_resueltas WHERE identificador = ?";
+        Connection con = null;
+        PreparedStatement selectStmt = null;
+        PreparedStatement insertStmt = null;
+        PreparedStatement deleteStmt = null;
+        ResultSet rs = null;
+
+        try {
+            con = ConexionBD.conectar();
+            con.setAutoCommit(false); // Start transaction
+
+            // Select from resueltas
+            selectStmt = con.prepareStatement(selectSQL);
+            selectStmt.setString(1, identificador);
+            rs = selectStmt.executeQuery();
+
+            if (rs.next()) {
+                // Insert into pendientes
+                insertStmt = con.prepareStatement(insertSQL);
+                insertStmt.setString(1, rs.getString("identificador"));
+                insertStmt.setString(2, Estado.Pendiente.toString());
+                insertStmt.setInt(3, rs.getInt("puesto"));
+                insertStmt.setString(4, rs.getString("descripcion"));
+                insertStmt.setDate(5, rs.getDate("fechaRegistro"));
+
+                int insertRows = insertStmt.executeUpdate();
+
+                // Delete from resueltas
+                deleteStmt = con.prepareStatement(deleteSQL);
+                deleteStmt.setString(1, identificador);
+                int deleteRows = deleteStmt.executeUpdate();
+
+                if (insertRows > 0 && deleteRows > 0) {
+                    con.commit();
+                    return true;
+                } else {
+                    con.rollback();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try {
+                if (con != null) {
+                    con.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                rollbackEx.printStackTrace();
+            }
+            return false;
+        } finally {
+            ConexionBD.cerrarConexion(con);
+        }
+        return false;
+    }
+
     public static List<Incidencias> getIncidenciasPendientes() {
         List<Incidencias> incidencias = new ArrayList<>();
-        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        String sql = "SELECT * FROM incidencias_pendientes";
         Connection con = null;
         PreparedStatement sentencia = null;
         ResultSet rs = null;
-        
+
         try {
-        con = ConexionBD.conectar();
-    	sentencia = con.prepareStatement(sql);
-    	sentencia.setString(1, Estado.Pendiente.toString());
-    	rs = sentencia.executeQuery();
-    	
-    	while (rs.next()) {
-    		String iden = rs.getString("identificador");
-    		Estado estado = Estado.valueOf(rs.getString("estado"));
-    		int Puesto = rs.getInt("puesto");
-    		String desc = rs.getString("descripcion");
-    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
-    		incidencias.add(incidencia);
-        }
-    	
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+            rs = sentencia.executeQuery();
+
+            while (rs.next()) {
+                String iden = rs.getString("identificador");
+                Estado estado = Estado.valueOf(rs.getString("estado"));
+                int puesto = rs.getInt("puesto");
+                String descripcion = rs.getString("descripcion");
+                Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
+                incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
+                incidencias.add(incidencia);
+            }
+
         } catch (SQLException e) {
-        	e.printStackTrace();
+            e.printStackTrace();
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
-		return incidencias;
+        return incidencias;
     }
 
-    /**
-     * Método que devuelve el array list de incidencias eliminadas
-     * @return Lista de incidencias eliminadas
-     */
     public static List<Incidencias> getIncidenciasEliminadas() {
-    	List<Incidencias> incidencias = new ArrayList<>();
-        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        List<Incidencias> incidencias = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias_eliminadas";
         Connection con = null;
         PreparedStatement sentencia = null;
         ResultSet rs = null;
-        
+
         try {
-        con = ConexionBD.conectar();
-    	sentencia = con.prepareStatement(sql);
-    	sentencia.setString(1, Estado.Eliminada.toString());
-    	rs = sentencia.executeQuery();
-    	
-    	while (rs.next()) {
-    		String iden = rs.getString("identificador");
-    		Estado estado = Estado.valueOf(rs.getString("estado"));
-    		int Puesto = rs.getInt("puesto");
-    		String desc = rs.getString("descripcion");
-    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaIncidencia(rs.getDate("fechaIncidencia"));
-    		incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
-            incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
-    		incidencias.add(incidencia);
-        }
-    	
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+            rs = sentencia.executeQuery();
+
+            while (rs.next()) {
+                String iden = rs.getString("identificador");
+                Estado estado = Estado.valueOf(rs.getString("estado"));
+                int puesto = rs.getInt("puesto");
+                String descripcion = rs.getString("descripcion");
+                Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
+                incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
+                incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
+                incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
+                incidencias.add(incidencia);
+            }
+
         } catch (SQLException e) {
-        	e.printStackTrace();
+            e.printStackTrace();
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
-		return incidencias;
+        return incidencias;
     }
 
-    /**
-     * Método que devuelve el array list de incidencias resueltas
-     * @return Lista de incidencias resueltas
-     */
     public static List<Incidencias> getIncidenciasResueltas() {
-    	List<Incidencias> incidencias = new ArrayList<>();
-        String sql = "SELECT * FROM incidencias WHERE estado = ?";
+        List<Incidencias> incidencias = new ArrayList<>();
+        String sql = "SELECT * FROM incidencias_resueltas";
         Connection con = null;
         PreparedStatement sentencia = null;
         ResultSet rs = null;
-        
+
         try {
-        con = ConexionBD.conectar();
-    	sentencia = con.prepareStatement(sql);
-    	sentencia.setString(1, Estado.Resuelta.toString());
-    	rs = sentencia.executeQuery();
-    	
-    	while (rs.next()) {
-    		String iden = rs.getString("identificador");
-    		Estado estado = Estado.valueOf(rs.getString("estado"));
-    		int Puesto = rs.getInt("puesto");
-    		String desc = rs.getString("descripcion");
-    		Incidencias incidencia = new Incidencias(desc, estado, Puesto, desc);
-    		incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
-    		incidencia.setFechaResolucion(rs.getDate("fechaResolucion"));
-            incidencia.setResolucion(rs.getString("resolucion"));
-    		incidencias.add(incidencia);
-        }
-    	
+            con = ConexionBD.conectar();
+            sentencia = con.prepareStatement(sql);
+            rs = sentencia.executeQuery();
+
+            while (rs.next()) {
+                String iden = rs.getString("identificador");
+                Estado estado = Estado.valueOf(rs.getString("estado"));
+                int puesto = rs.getInt("puesto");
+                String descripcion = rs.getString("descripcion");
+                Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
+                incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
+                incidencia.setFechaResolucion(rs.getDate("fechaResolucion"));
+                incidencia.setResolucion(rs.getString("resolucion"));
+                incidencias.add(incidencia);
+            }
+
         } catch (SQLException e) {
-        	e.printStackTrace();
+            e.printStackTrace();
         } finally {
-        	ConexionBD.cerrarConexion(con);
+            ConexionBD.cerrarConexion(con);
         }
-		return incidencias;
+        return incidencias;
     }
 
     /**
