@@ -160,7 +160,7 @@ public class Logica {
         int contador = 1;
         for (Incidencias incidencia : incidenciasPendientes) {
             Date fechaIncidencia = incidencia.getFechaIncidencia();
-            if (isSameDay(fechaRegistro, fechaIncidencia)) {
+            if (mismoDia(fechaRegistro, fechaIncidencia)) {
                 contador++;
             }
         }
@@ -176,7 +176,7 @@ public class Logica {
      * @param fecha2 La segunda fecha.
      * @return true si ambas fechas son el mismo día, false en caso contrario.
      */
-    public static boolean isSameDay(Date fecha1, Date fecha2) {
+    public static boolean mismoDia(Date fecha1, Date fecha2) {
         SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd");
         return fmt.format(fecha1).equals(fmt.format(fecha2));
     }

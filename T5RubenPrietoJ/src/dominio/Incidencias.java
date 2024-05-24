@@ -4,11 +4,7 @@ import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import javax.xml.bind.annotation.*;
 
-@XmlRootElement(name="incidencias")
-@XmlType(propOrder = {"fechaIncidencia","identificador","estado","puesto","descripcion","fechaRegistro","fechaResolucion","fechaEliminacion","causaEliminacion", "resolucion"})
-@XmlAccessorType (XmlAccessType.FIELD)
 
 /**
  * Clase principal para crear la incidencia o representar una incidencia
@@ -21,52 +17,42 @@ public class Incidencias implements Serializable{
 	/**
      * Estado de la incidencia.
      */
-	@XmlAttribute (name = "estado")
     private Estado estado;
 	/**
      * Fecha de la incidencia.
      */
-	@XmlAttribute (name = "fechaIncidencia")
     private Date fechaIncidencia;
 	/**
      * Identificador de la incidencia.
      */
-	@XmlAttribute (name = "identificador")
     private String identificador;
 	/**
      * Descripción de la incidencia.
      */
-	@XmlAttribute (name = "descripcion")
     private String descripcion;
 	/**
      * Puesto relacionado con la incidencia.
      */
-	@XmlAttribute (name = "puesto")
     private int puesto;
 	/**
      * Fecha de registro de la incidencia.
      */
-	@XmlAttribute (name = "fechaRegistro")
     private Date fechaRegistro;
 	/**
      * Fecha de eliminación de la incidencia.
      */
-	@XmlAttribute (name = "fechaEliminacion")
     private Date fechaEliminacion;
 	/**
      * Fecha de resolución de la incidencia.
      */
-	@XmlAttribute (name = "fechaResolucion")
     private Date fechaResolucion;
 	/**
      * Causa de eliminación de la incidencia.
      */
-	@XmlAttribute (name = "causaEliminacion")
     private String causaEliminacion;
 	/**
      * Resolución de la incidencia.
      */
-	@XmlAttribute (name = "resolucion")
     private String resolucion;
 
 	/**
