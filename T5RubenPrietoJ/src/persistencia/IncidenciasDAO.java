@@ -60,17 +60,13 @@ public class IncidenciasDAO {
      * @return La incidencia encontrada, o null si no se encuentra
      */
     public static Incidencias buscarIncidencia(Connection con, String identificador) {
-        String sql = "SELECT * FROM incidencias_pendientes WHERE identificador = ? UNION " +
-                     "SELECT * FROM incidencias_resueltas WHERE identificador = ? UNION " +
-                     "SELECT * FROM incidencias_eliminadas WHERE identificador = ?";
+        String sql = "SELECT * FROM incidencias_pendientes WHERE identificador = ?";
         PreparedStatement sentencia = null;
         ResultSet rs = null;
 
         try {
             sentencia = con.prepareStatement(sql);
             sentencia.setString(1, identificador);
-            sentencia.setString(2, identificador);
-            sentencia.setString(3, identificador);
             rs = sentencia.executeQuery();
 
             if (rs.next()) {
@@ -80,10 +76,6 @@ public class IncidenciasDAO {
                 String descripcion = rs.getString("descripcion");
                 Incidencias incidencia = new Incidencias(iden, estado, puesto, descripcion);
                 incidencia.setFechaRegistro(rs.getDate("fechaRegistro"));
-                incidencia.setFechaResolucion(rs.getDate("fechaResolucion"));
-                incidencia.setResolucion(rs.getString("resolucion"));
-                incidencia.setFechaEliminacion(rs.getDate("fechaEliminacion"));
-                incidencia.setCausaEliminacion(rs.getString("causaEliminacion"));
                 return incidencia;
             }
         } catch (SQLException e) {
