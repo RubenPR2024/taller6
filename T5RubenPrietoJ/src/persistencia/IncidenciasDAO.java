@@ -1,11 +1,9 @@
 package persistencia;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -101,7 +99,6 @@ public class IncidenciasDAO {
         PreparedStatement sentenciaInsert = null;
 
         try {
-            con.setAutoCommit(false);
 
             sentenciaInsert = con.prepareStatement(sqlInsert);
             sentenciaInsert.setDate(1, new java.sql.Date(fechaEliminacion.getTime()));
@@ -112,27 +109,14 @@ public class IncidenciasDAO {
             if (filasInsertadas > 0) {
                 sentenciaDelete = con.prepareStatement(sqlDelete);
                 sentenciaDelete.setString(1, identificador);
-                int filasEliminadas = sentenciaDelete.executeUpdate();
-                if (filasEliminadas > 0) {
-                    con.commit();
-                    return true;
-                }
+                sentenciaDelete.executeUpdate();
             }
-            con.rollback();
-            return false;
 
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
-        } finally {
-            try {
-                if (con != null) {
-                    con.setAutoCommit(true);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
+        return true;
     }
 
     /**
@@ -149,7 +133,6 @@ public class IncidenciasDAO {
         PreparedStatement sentenciaInsert = null;
 
         try {
-            con.setAutoCommit(false);
 
             sentenciaInsert = con.prepareStatement(sqlInsert);
             sentenciaInsert.setDate(1, new java.sql.Date(fechaResolucion.getTime()));
@@ -160,26 +143,13 @@ public class IncidenciasDAO {
             if (filasInsertadas > 0) {
                 sentenciaDelete = con.prepareStatement(sqlDelete);
                 sentenciaDelete.setString(1, identificador);
-                int filasEliminadas = sentenciaDelete.executeUpdate();
-                if (filasEliminadas > 0) {
-                    con.commit();
-                    return true;
-                }
+                sentenciaDelete.executeUpdate();
             }
-            con.rollback();
             return false;
 
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
-        } finally {
-            try {
-                if (con != null) {
-                    con.setAutoCommit(true);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
     /**
@@ -237,52 +207,32 @@ public class IncidenciasDAO {
         String selectSQL = "SELECT * FROM incidencias_resueltas WHERE identificador = ?";
         String insertSQL = "INSERT INTO incidencias_pendientes (identificador, estado, puesto, descripcion, fechaRegistro) VALUES (?, ?, ?, ?, ?)";
         String deleteSQL = "DELETE FROM incidencias_resueltas WHERE identificador = ?";
-        PreparedStatement selectStmt = null;
-        PreparedStatement insertStmt = null;
-        PreparedStatement deleteStmt = null;
+        PreparedStatement selectStatement = null;
+        PreparedStatement insertStatement = null;
+        PreparedStatement deleteStatement = null;
         ResultSet rs = null;
 
         try {
-            con.setAutoCommit(false); // Start transaction
-
-            // Select from resueltas
-            selectStmt = con.prepareStatement(selectSQL);
-            selectStmt.setString(1, identificador);
-            rs = selectStmt.executeQuery();
+        	selectStatement = con.prepareStatement(selectSQL);
+        	selectStatement.setString(1, identificador);
+            rs = selectStatement.executeQuery();
 
             if (rs.next()) {
-                // Insert into pendientes
-                insertStmt = con.prepareStatement(insertSQL);
-                insertStmt.setString(1, rs.getString("identificador"));
-                insertStmt.setString(2, Estado.Pendiente.toString());
-                insertStmt.setInt(3, rs.getInt("puesto"));
-                insertStmt.setString(4, rs.getString("descripcion"));
-                insertStmt.setDate(5, rs.getDate("fechaRegistro"));
+                insertStatement = con.prepareStatement(insertSQL);
+                insertStatement.setString(1, rs.getString("identificador"));
+                insertStatement.setString(2, Estado.Pendiente.toString());
+                insertStatement.setInt(3, rs.getInt("puesto"));
+                insertStatement.setString(4, rs.getString("descripcion"));
+                insertStatement.setDate(5, rs.getDate("fechaRegistro"));
 
-                int insertRows = insertStmt.executeUpdate();
+                insertStatement.executeUpdate();
 
-                // Delete from resueltas
-                deleteStmt = con.prepareStatement(deleteSQL);
-                deleteStmt.setString(1, identificador);
-                int deleteRows = deleteStmt.executeUpdate();
-
-                if (insertRows > 0 && deleteRows > 0) {
-                    con.commit();
-                    return true;
-                } else {
-                    con.rollback();
-                }
+                deleteStatement = con.prepareStatement(deleteSQL);
+                deleteStatement.setString(1, identificador);
+                deleteStatement.executeUpdate();
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            try {
-                if (con != null) {
-                    con.rollback();
-                }
-            } catch (SQLException rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-            return false;
         }
         return false;
     }
